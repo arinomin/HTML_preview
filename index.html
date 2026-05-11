@@ -1,0 +1,162 @@
+<!-- File: index.html -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTML Live Preview</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+  }
+  #container {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+  }
+  #editor {
+    width: 50%;
+    height: 100%;
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 8px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    tab-size: 2;
+  }
+  #divider {
+    width: 1px;
+    height: 100%;
+    background: #444;
+    cursor: col-resize;
+    flex-shrink: 0;
+  }
+  #preview {
+    flex: 1;
+    height: 100%;
+    border: none;
+    background: #fff;
+  }
+  #toolbar {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    display: flex;
+    gap: 4px;
+    opacity: 0.3;
+    transition: opacity 0.2s;
+  }
+  #toolbar:hover {
+    opacity: 1;
+  }
+  #toolbar button {
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    border: none;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  #toolbar button:hover {
+    background: rgba(0,0,0,0.85);
+  }
+</style>
+</head>
+<body>
+<div id="container">
+  <textarea id="editor" spellcheck="false" placeholder="ここにHTMLを貼り付け..."></textarea>
+  <div id="divider"></div>
+  <iframe id="preview" sandbox="allow-scripts allow-same-origin"></iframe>
+</div>
+<div id="toolbar">
+  <button id="clearBtn">クリア</button>
+  <button id="copyBtn">コピー</button>
+</div>
+
+<script>
+  const editor = document.getElementById('editor');
+  const preview = document.getElementById('preview');
+  const divider = document.getElementById('divider');
+  const container = document.getElementById('container');
+
+  // 入力反映（debounce）
+  let timer = null;
+  function render() {
+    const doc = preview.contentDocument || preview.contentWindow.document;
+    doc.open();
+    doc.write(editor.value);
+    doc.close();
+  }
+  editor.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(render, 150);
+    localStorage.setItem('html_preview_content', editor.value);
+  });
+
+  // 復元
+  const saved = localStorage.getItem('html_preview_content');
+  if (saved) {
+    editor.value = saved;
+    render();
+  }
+
+  // Tabキーでインデント
+  editor.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      editor.value = editor.value.substring(0, start) + '  ' + editor.value.substring(end);
+      editor.selectionStart = editor.selectionEnd = start + 2;
+    }
+  });
+
+  // ドラッグでサイズ変更
+  let dragging = false;
+  divider.addEventListener('mousedown', () => {
+    dragging = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const ratio = e.clientX / window.innerWidth;
+    if (ratio > 0.1 && ratio < 0.9) {
+      editor.style.width = (ratio * 100) + '%';
+    }
+  });
+  document.addEventListener('mouseup', () => {
+    dragging = false;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+
+  // ボタン
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    editor.value = '';
+    localStorage.removeItem('html_preview_content');
+    render();
+    editor.focus();
+  });
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(editor.value);
+    } catch (e) {}
+  });
+</script>
+</body>
+</html>
