@@ -3,9 +3,16 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>HTML Live Preview</title>
 <style>
+  :root {
+    --split: 50%;
+    --divider-size: 6px;
+    --bg-dark: #1e1e1e;
+    --bg-toolbar: #252526;
+    --accent: #0e639c;
+  }
   * {
     box-sizing: border-box;
     margin: 0;
@@ -16,84 +23,194 @@
     height: 100%;
     overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+    -webkit-text-size-adjust: 100%;
   }
-  #container {
+  body {
     display: flex;
-    width: 100vw;
-    height: 100vh;
+    flex-direction: column;
+    height: 100dvh; /* モバイルのアドレスバーを考慮 */
   }
+
+  /* ===== ツールバー ===== */
+  #toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: var(--bg-toolbar);
+    border-bottom: 1px solid #333;
+  }
+  #toolbar .group {
+    display: flex;
+    gap: 4px;
+  }
+  #toolbar .spacer {
+    flex: 1;
+  }
+  #toolbar button {
+    background: #333;
+    color: #ddd;
+    border: 1px solid #444;
+    padding: 6px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 4px;
+    white-space: nowrap;
+    min-height: 34px; /* タップしやすいサイズ */
+  }
+  #toolbar button:hover {
+    background: #3c3c3c;
+  }
+  #toolbar button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* ===== コンテナ ===== */
+  #container {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: row;
+    min-height: 0;
+    position: relative;
+  }
+
+  #editorPane, #previewPane {
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* 分割モード（横並び） */
+  #container.split #editorPane {
+    flex: 0 0 var(--split);
+  }
+  #container.split #previewPane {
+    flex: 1 1 0;
+  }
+  #container.split #divider {
+    display: block;
+  }
+
+  /* コード全画面 */
+  #container.code-only #editorPane {
+    flex: 1 1 100%;
+  }
+  #container.code-only #previewPane,
+  #container.code-only #divider {
+    display: none;
+  }
+
+  /* プレビュー全画面 */
+  #container.preview-only #previewPane {
+    flex: 1 1 100%;
+  }
+  #container.preview-only #editorPane,
+  #container.preview-only #divider {
+    display: none;
+  }
+
+  /* ===== エディタ・プレビュー ===== */
   #editor {
-    width: 50%;
+    width: 100%;
     height: 100%;
     border: none;
     outline: none;
     resize: none;
-    padding: 8px;
+    padding: 10px;
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.5;
-    background: #1e1e1e;
+    background: var(--bg-dark);
     color: #d4d4d4;
     tab-size: 2;
-  }
-  #divider {
-    width: 1px;
-    height: 100%;
-    background: #444;
-    cursor: col-resize;
-    flex-shrink: 0;
+    -webkit-tab-size: 2;
   }
   #preview {
-    flex: 1;
+    width: 100%;
     height: 100%;
     border: none;
     background: #fff;
+    display: block;
   }
-  #toolbar {
-    position: fixed;
-    top: 8px;
-    right: 8px;
-    z-index: 10;
-    display: flex;
-    gap: 4px;
-    opacity: 0.3;
-    transition: opacity 0.2s;
+
+  /* ===== ディバイダ ===== */
+  #divider {
+    flex: 0 0 var(--divider-size);
+    background: #333;
+    cursor: col-resize;
+    position: relative;
+    touch-action: none; /* タッチでのスクロールを抑止 */
   }
-  #toolbar:hover {
-    opacity: 1;
+  #divider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 2px;
+    height: 28px;
+    transform: translate(-50%, -50%);
+    background: #666;
+    border-radius: 2px;
   }
-  #toolbar button {
-    background: rgba(0,0,0,0.6);
-    color: #fff;
-    border: none;
-    padding: 4px 10px;
-    font-size: 12px;
-    cursor: pointer;
-    border-radius: 3px;
+  /* ドラッグ中は iframe にイベントを奪わせない */
+  #container.dragging #preview,
+  #container.dragging #editor {
+    pointer-events: none;
   }
-  #toolbar button:hover {
-    background: rgba(0,0,0,0.85);
+
+  /* ===== レスポンシブ：縦分割へ切替 ===== */
+  @media (max-width: 700px), (orientation: portrait) and (max-width: 900px) {
+    #container.split {
+      flex-direction: column;
+    }
+    #container.split #editorPane {
+      flex: 0 0 var(--split);
+    }
+    #divider {
+      cursor: row-resize;
+    }
+    #divider::after {
+      width: 28px;
+      height: 2px;
+    }
   }
 </style>
 </head>
 <body>
-<div id="container">
-  <textarea id="editor" spellcheck="false" placeholder="ここにHTMLを貼り付け..."></textarea>
-  <div id="divider"></div>
-  <iframe id="preview" sandbox="allow-scripts allow-same-origin"></iframe>
-</div>
-<div id="toolbar">
-  <button id="clearBtn">クリア</button>
-  <button id="copyBtn">コピー</button>
-</div>
+  <div id="toolbar">
+    <div class="group" id="viewModes">
+      <button id="btnSplit" class="active" title="分割表示">⬛ 分割</button>
+      <button id="btnCode" title="コード全画面">&lt;/&gt; コード</button>
+      <button id="btnPreview" title="プレビュー全画面">▶ プレビュー</button>
+    </div>
+    <div class="spacer"></div>
+    <div class="group">
+      <button id="clearBtn">クリア</button>
+      <button id="copyBtn">コピー</button>
+    </div>
+  </div>
+
+  <div id="container" class="split">
+    <div id="editorPane">
+      <textarea id="editor" spellcheck="false" placeholder="ここにHTMLを貼り付け..."></textarea>
+    </div>
+    <div id="divider"></div>
+    <div id="previewPane">
+      <iframe id="preview" sandbox="allow-scripts allow-same-origin"></iframe>
+    </div>
+  </div>
 
 <script>
-  const editor = document.getElementById('editor');
-  const preview = document.getElementById('preview');
-  const divider = document.getElementById('divider');
+  const editor    = document.getElementById('editor');
+  const preview   = document.getElementById('preview');
+  const divider   = document.getElementById('divider');
   const container = document.getElementById('container');
 
-  // 入力反映（debounce）
+  /* ===== プレビュー描画（debounce） ===== */
   let timer = null;
   function render() {
     const doc = preview.contentDocument || preview.contentWindow.document;
@@ -104,58 +221,116 @@
   editor.addEventListener('input', () => {
     clearTimeout(timer);
     timer = setTimeout(render, 150);
-    localStorage.setItem('html_preview_content', editor.value);
+    try { localStorage.setItem('html_preview_content', editor.value); } catch (e) {}
   });
 
-  // 復元
-  const saved = localStorage.getItem('html_preview_content');
-  if (saved) {
-    editor.value = saved;
-    render();
-  }
+  /* ===== 復元 ===== */
+  try {
+    const saved = localStorage.getItem('html_preview_content');
+    if (saved) {
+      editor.value = saved;
+    }
+  } catch (e) {}
+  render();
 
-  // Tabキーでインデント
+  /* ===== 表示モード切替 ===== */
+  const modeButtons = {
+    split:   document.getElementById('btnSplit'),
+    code:    document.getElementById('btnCode'),
+    preview: document.getElementById('btnPreview'),
+  };
+  function setMode(mode) {
+    container.classList.remove('split', 'code-only', 'preview-only');
+    if (mode === 'split')   container.classList.add('split');
+    if (mode === 'code')    container.classList.add('code-only');
+    if (mode === 'preview') container.classList.add('preview-only');
+
+    Object.values(modeButtons).forEach(b => b.classList.remove('active'));
+    if (mode === 'split')   modeButtons.split.classList.add('active');
+    if (mode === 'code')    modeButtons.code.classList.add('active');
+    if (mode === 'preview') modeButtons.preview.classList.add('active');
+
+    try { localStorage.setItem('html_preview_mode', mode); } catch (e) {}
+  }
+  modeButtons.split.addEventListener('click',   () => setMode('split'));
+  modeButtons.code.addEventListener('click',    () => setMode('code'));
+  modeButtons.preview.addEventListener('click', () => setMode('preview'));
+
+  try {
+    const savedMode = localStorage.getItem('html_preview_mode');
+    if (savedMode) setMode(savedMode);
+  } catch (e) {}
+
+  /* ===== Tabキーでインデント ===== */
   editor.addEventListener('keydown', (e) => {
     if (e.key === 'Tab') {
       e.preventDefault();
       const start = editor.selectionStart;
-      const end = editor.selectionEnd;
+      const end   = editor.selectionEnd;
       editor.value = editor.value.substring(0, start) + '  ' + editor.value.substring(end);
       editor.selectionStart = editor.selectionEnd = start + 2;
     }
   });
 
-  // ドラッグでサイズ変更
+  /* ===== ディバイダのドラッグ（Pointer Eventsで統一：マウス＆タッチ両対応） ===== */
   let dragging = false;
-  divider.addEventListener('mousedown', () => {
-    dragging = true;
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-  });
-  document.addEventListener('mousemove', (e) => {
+
+  function isVertical() {
+    // 縦分割（flex-direction:column）になっているかを判定
+    return getComputedStyle(container).flexDirection === 'column';
+  }
+
+  function onPointerMove(e) {
     if (!dragging) return;
-    const ratio = e.clientX / window.innerWidth;
-    if (ratio > 0.1 && ratio < 0.9) {
-      editor.style.width = (ratio * 100) + '%';
+    const rect = container.getBoundingClientRect();
+    let ratio;
+    if (isVertical()) {
+      ratio = (e.clientY - rect.top) / rect.height;
+    } else {
+      ratio = (e.clientX - rect.left) / rect.width;
     }
-  });
-  document.addEventListener('mouseup', () => {
+    // 上下限を制限（左右・上下どちらにも対称に動く）
+    ratio = Math.min(0.9, Math.max(0.1, ratio));
+    container.style.setProperty('--split', (ratio * 100) + '%');
+  }
+
+  function endDrag() {
+    if (!dragging) return;
     dragging = false;
+    container.classList.remove('dragging');
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
-  });
+  }
 
-  // ボタン
+  divider.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    container.classList.add('dragging'); // iframe へのイベント喪失を防ぐ
+    document.body.style.cursor = isVertical() ? 'row-resize' : 'col-resize';
+    document.body.style.userSelect = 'none';
+    divider.setPointerCapture(e.pointerId); // ポインタを掴み続ける＝右側でも追従
+  });
+  divider.addEventListener('pointermove', onPointerMove);
+  divider.addEventListener('pointerup', endDrag);
+  divider.addEventListener('pointercancel', endDrag);
+  // 念のためドキュメント側でも拾う
+  document.addEventListener('pointermove', onPointerMove);
+  document.addEventListener('pointerup', endDrag);
+
+  /* ===== ボタン ===== */
   document.getElementById('clearBtn').addEventListener('click', () => {
     editor.value = '';
-    localStorage.removeItem('html_preview_content');
+    try { localStorage.removeItem('html_preview_content'); } catch (e) {}
     render();
     editor.focus();
   });
   document.getElementById('copyBtn').addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(editor.value);
-    } catch (e) {}
+    } catch (e) {
+      // フォールバック
+      editor.select();
+      document.execCommand('copy');
+    }
   });
 </script>
 </body>
